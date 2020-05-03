@@ -103,6 +103,7 @@ a {
   align-items: center;
   transition: background 0.2s ease;
   letter-spacing: 0.25px;
+  color: #fff;
 }
 
 .word > div {
@@ -228,4 +229,38 @@ a {
 .smalltext {
   padding-top: 5px;
   font-size: 16px;
+}
+body {
+  margin: 0;
+}
+canvas {
+  display: none;
+}
+h1 {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-family: "Source Sans Pro";
+  font-size: 5em;
+  font-weight: 900;
+  -webkit-user-select: none;
+  user-select: none;
+  width: fit-content;
+  display: none;
+}
+@-webkit-keyframes blackWhite {
+  0% {
+    background-color: rgb(245, 30, 30);
+  }
+  50% {
+    background-color: rgb(13, 10, 219);
+  }
+  51% {
+    background-color: rgb(50, 235, 13);
+  }
+  100% {
+    background-color: rgb(250, 8, 230);
+  }
 }

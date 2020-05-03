@@ -69,7 +69,11 @@ function fire() {
 
   //fire new board
   updateScore();
-  createNewGame();
+  if (seed === "happy") {
+    createHappyGame();
+  } else {
+    createNewGame();
+  }
 }
 
 //not used, but probably useful at some point
@@ -135,7 +139,227 @@ function createNewGame() {
 
   updateScore();
 }
+function createHappyGame() {
+  var trs = [];
+  for (var i = 0; i < NUMBER_OF_WORDS; i++) {
+    if (!trs[i % 5]) {
+      trs[i % 5] = "";
+    }
+    var randomNumber = Math.floor(Math.random() * sessionData.length);
+    var word = "Happy Birthday";
+    removeItem(sessionData, randomNumber);
+    wordsSelected.push(word);
+    trs[i % 5] +=
+      '<div class="word" id=\'' +
+      i +
+      "' onclick=\"clicked('" +
+      i +
+      '\')"><div><a href="#"><span class="ada"></span>' +
+      word +
+      "</a></div></div>";
+  }
+  //<a href="#"><span class="ada">Washington stimulates economic growth </span>Read me</a>
+  for (var i = 0; i < trs.length; i++) {
+    document.getElementById("board").innerHTML +=
+      '<div class="row">' + trs[i] + "</div>";
+  }
 
+  // create array of word cells
+  for (var i = 0; i < 8; i++) {
+    cells.push(RED_TEAM);
+    cells.push(BLUE_TEAM);
+  }
+
+  // one team gets an extra cell
+  if (Math.floor(Math.random() * data.length) % 2 === 0) {
+    cells.push(RED_TEAM);
+    startTeam = RED_TEAM;
+    $("#score-container").addClass("redStart").removeClass("blueStart");
+  } else {
+    cells.push(BLUE_TEAM);
+    startTeam = BLUE_TEAM;
+    $("#score-container").addClass("blueStart").removeClass("redStart");
+  }
+
+  // add neutrals
+  for (var i = 0; i < 7; i++) {
+    cells.push(NEUTRAL);
+  }
+
+  // push the bomb
+  cells.push(BOMB);
+
+  //shuffle cells
+  shuffle(cells);
+
+  updateScore();
+  // helper functions
+  const PI2 = Math.PI * 2;
+  const random = (min, max) => (Math.random() * (max - min + 1) + min) | 0;
+  const timestamp = (_) => new Date().getTime();
+
+  // container
+  class Birthday {
+    constructor() {
+      this.resize();
+
+      // create a lovely place to store the firework
+      this.fireworks = [];
+      this.counter = 0;
+    }
+
+    resize() {
+      this.width = canvas.width = window.innerWidth;
+      let center = (this.width / 2) | 0;
+      this.spawnA = (center - center / 4) | 0;
+      this.spawnB = (center + center / 4) | 0;
+
+      this.height = canvas.height = window.innerHeight;
+      this.spawnC = this.height * 0.1;
+      this.spawnD = this.height * 0.5;
+    }
+
+    onClick(evt) {
+      let x = evt.clientX || (evt.touches && evt.touches[0].pageX);
+      let y = evt.clientY || (evt.touches && evt.touches[0].pageY);
+
+      let count = random(3, 5);
+      for (let i = 0; i < count; i++)
+        this.fireworks.push(
+          new Firework(
+            random(this.spawnA, this.spawnB),
+            this.height,
+            x,
+            y,
+            random(0, 260),
+            random(30, 110)
+          )
+        );
+
+      this.counter = -1;
+    }
+
+    update(delta) {
+      ctx.globalCompositeOperation = "hard-light";
+      ctx.fillStyle = `rgba(20,20,20,${7 * delta})`;
+      ctx.fillRect(0, 0, this.width, this.height);
+
+      ctx.globalCompositeOperation = "lighter";
+      for (let firework of this.fireworks) firework.update(delta);
+
+      // if enough time passed... create new new firework
+      this.counter += delta * 3; // each second
+      if (this.counter >= 1) {
+        this.fireworks.push(
+          new Firework(
+            random(this.spawnA, this.spawnB),
+            this.height,
+            random(0, this.width),
+            random(this.spawnC, this.spawnD),
+            random(0, 360),
+            random(30, 110)
+          )
+        );
+        this.counter = 0;
+      }
+
+      // remove the dead fireworks
+      if (this.fireworks.length > 1000)
+        this.fireworks = this.fireworks.filter((firework) => !firework.dead);
+    }
+  }
+
+  class Firework {
+    constructor(x, y, targetX, targetY, shade, offsprings) {
+      this.dead = false;
+      this.offsprings = offsprings;
+
+      this.x = x;
+      this.y = y;
+      this.targetX = targetX;
+      this.targetY = targetY;
+
+      this.shade = shade;
+      this.history = [];
+    }
+    update(delta) {
+      if (this.dead) return;
+
+      let xDiff = this.targetX - this.x;
+      let yDiff = this.targetY - this.y;
+      if (Math.abs(xDiff) > 3 || Math.abs(yDiff) > 3) {
+        // is still moving
+        this.x += xDiff * 2 * delta;
+        this.y += yDiff * 2 * delta;
+
+        this.history.push({
+          x: this.x,
+          y: this.y,
+        });
+
+        if (this.history.length > 20) this.history.shift();
+      } else {
+        if (this.offsprings && !this.madeChilds) {
+          let babies = this.offsprings / 2;
+          for (let i = 0; i < babies; i++) {
+            let targetX =
+              (this.x + this.offsprings * Math.cos((PI2 * i) / babies)) | 0;
+            let targetY =
+              (this.y + this.offsprings * Math.sin((PI2 * i) / babies)) | 0;
+
+            birthday.fireworks.push(
+              new Firework(this.x, this.y, targetX, targetY, this.shade, 0)
+            );
+          }
+        }
+        this.madeChilds = true;
+        this.history.shift();
+      }
+
+      if (this.history.length === 0) this.dead = true;
+      else if (this.offsprings) {
+        for (let i = 0; this.history.length > i; i++) {
+          let point = this.history[i];
+          ctx.beginPath();
+          ctx.fillStyle = "hsl(" + this.shade + ",100%," + i + "%)";
+          ctx.arc(point.x, point.y, 1, 0, PI2, false);
+          ctx.fill();
+        }
+      } else {
+        ctx.beginPath();
+        ctx.fillStyle = "hsl(" + this.shade + ",100%,50%)";
+        ctx.arc(this.x, this.y, 1, 0, PI2, false);
+        ctx.fill();
+      }
+    }
+  }
+
+  let canvas = document.getElementById("birthday");
+  let board = document.getElementById("board");
+  document.body.style.backgroundColor = "#020202";
+  canvas.style.display = "block";
+  document.getElementsByTagName("h1")[0].style.display = "block";
+
+  board.style.display = "none";
+  let ctx = canvas.getContext("2d");
+
+  let then = timestamp();
+
+  let birthday = new Birthday();
+  window.onresize = () => birthday.resize();
+  document.onclick = (evt) => birthday.onClick(evt);
+  document.ontouchstart = (evt) => birthday.onClick(evt);
+
+  (function loop() {
+    requestAnimationFrame(loop);
+
+    let now = timestamp();
+    let delta = now - then;
+
+    then = now;
+    birthday.update(delta / 1000);
+  })();
+}
 function clicked(value) {
   var elem = $("#" + value);
 
@@ -260,145 +484,6 @@ function shuffle(array) {
   return array;
 }
 
-// function getTimeRemaining(endtime) {
-//   var t = Date.parse(endtime) - Date.parse(new Date());
-//   var seconds = Math.floor((t / 1000) % 60);
-//   var minutes = Math.floor((t / 1000 / 60) % 60);
-//   var hours = Math.floor((t / (1000 * 60 * 60)) % 24);
-//   var days = Math.floor(t / (1000 * 60 * 60 * 24));
-//   return {
-//     total: t,
-//     days: days,
-//     hours: hours,
-//     minutes: minutes,
-//     seconds: seconds,
-//   };
-// }
-
-// function initializeClock(id, endtime) {
-//   var clock = document.getElementById(id);
-//   //   var daysSpan = clock.querySelector(".days");
-//   //   var hoursSpan = clock.querySelector(".hours");
-//   var minutesSpan = clock.querySelector(".minutes");
-//   var secondsSpan = clock.querySelector(".seconds");
-
-//   function updateClock() {
-//     var t = getTimeRemaining(endtime);
-
-//     // daysSpan.innerHTML = t.days;
-//     // hoursSpan.innerHTML = ("0" + t.hours).slice(-2);
-//     minutesSpan.innerHTML = ("0" + t.minutes).slice(-2);
-//     secondsSpan.innerHTML = ("0" + t.seconds).slice(-2);
-
-//     if (t.total <= 0) {
-//       clearInterval(timeinterval);
-//     }
-//   }
-
-//   updateClock();
-// }
-
-var timer = {
-  clock: document.getElementById("clockdiv"),
-  minutesSpan: document.getElementById("clockdiv").querySelector(".minutes"),
-  secondsSpan: document.getElementById("clockdiv").querySelector(".seconds"),
-  timeinterval: "",
-  start: function () {
-    var timerInput = document.getElementById("timerInput").value;
-    var deadline = new Date(Date.parse(new Date()) + timerInput * 60 * 1000);
-    this.updateClock(deadline);
-    this.timeinterval = setInterval(this.updateClock(deadline), 1000);
-    var x = document.getElementById("clockdiv");
-    if (x.style.display === "none") {
-      x.style.display = "block";
-    } else {
-      x.style.display = "none";
-    }
-    var y = document.getElementById("timer-input");
-    if (y.style.display === "none") {
-      yield.style.display = "block";
-    } else {
-      y.style.display = "none";
-    }
-  },
-  stop: function () {
-    var x = document.getElementById("timer-input");
-    if (x.style.display === "none") {
-      x.style.display = "block";
-    } else {
-      x.style.display = "none";
-    }
-    var y = document.getElementById("clockdiv");
-    if (y.style.display === "none") {
-      yield.style.display = "block";
-    } else {
-      y.style.display = "none";
-    }
-    clearInterval(this.timeinterval);
-  },
-  getTimeRemaining: function (endtime) {
-    var t = Date.parse(endtime) - Date.parse(new Date());
-    var seconds = Math.floor((t / 1000) % 60);
-    var minutes = Math.floor((t / 1000 / 60) % 60);
-    var hours = Math.floor((t / (1000 * 60 * 60)) % 24);
-    var days = Math.floor(t / (1000 * 60 * 60 * 24));
-    return {
-      total: t,
-      days: days,
-      hours: hours,
-      minutes: minutes,
-      seconds: seconds,
-    };
-  },
-  updateClock: function (endtime) {
-    var t = this.getTimeRemaining(endtime);
-    document.getElementById("clockdiv").querySelector(".minutes").innerHTML = (
-      "0" + t.minutes
-    ).slice(-2);
-    document.getElementById("clockdiv").querySelector(".seconds").innerHTML = (
-      "0" + t.seconds
-    ).slice(-2);
-
-    if (t.total <= 0) {
-      clearInterval(this.timeinterval);
-    }
-  },
-};
-
-//var deadline = new Date(Date.parse(new Date()) + 6 * 60 * 1000);
-
-function startTimer() {
-  var timerInput = document.getElementById("timerInput").value;
-  console.log(timerInput);
-  var deadline = new Date(Date.parse(new Date()) + timerInput * 60 * 1000);
-  initializeClock("clockdiv", deadline);
-  var x = document.getElementById("clockdiv");
-  if (x.style.display === "none") {
-    x.style.display = "block";
-  } else {
-    x.style.display = "none";
-  }
-  var y = document.getElementById("timer-input");
-  if (y.style.display === "none") {
-    yield.style.display = "block";
-  } else {
-    y.style.display = "none";
-  }
-}
-function stopTimer() {
-  var x = document.getElementById("timer-input");
-  if (x.style.display === "none") {
-    x.style.display = "block";
-  } else {
-    x.style.display = "none";
-  }
-  var y = document.getElementById("clockdiv");
-  if (y.style.display === "none") {
-    yield.style.display = "block";
-  } else {
-    y.style.display = "none";
-  }
-}
 //enable pressing 'Enter' on seed field
 document.getElementById("seed").onkeypress = function (e) {
   if (!e) e = window.event;
